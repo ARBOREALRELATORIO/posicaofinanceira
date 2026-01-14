@@ -4,12 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARBOREAL - FINANCEIRO | Posição Semanal</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
-  // Carregar automaticamente ao abrir a página
-  window.addEventListener('load', () => {
-    loadData();
-  });
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body{
@@ -57,7 +52,6 @@
       white-space:nowrap;
     }
     .control-group input[type="month"],
-    .control-group input[type="file"],
     .control-group select{
       padding:.5rem;
       border:1px solid #d1d5db;
@@ -66,7 +60,6 @@
       background:white;
       color:#111827;
     }
-    .control-group input[type="file"]{ padding:.35rem; }
 
     .btn{
       color:white;
@@ -195,13 +188,12 @@
       font-size:1.875rem;
       font-weight:800;
     }
-    .stat-card.blue p:last-child{ color:#1d4ed8; }
-    .stat-card.green p:last-child{ color:#059669; }
+    .stat-card.blue p:last-child{ color:#059669; }   /* A receber sempre verde */
+    .stat-card.green p:last-child{ color:#059669; }  /* reserva, caso use */
     .stat-card.purple p:last-child{ color:#7c3aed; }
     .stat-card.red p:last-child{ color:#dc2626; }
 
     .pay-red{ color:#dc2626; font-weight:700; }
-    .receive-green{ color:#059669; font-weight:700; }
 
     .loading-message{
       background-color:#dbeafe;
@@ -284,11 +276,9 @@
     <div id="messageArea" class="no-print"></div>
 
     <div class="info-box no-print">
-      <strong>Fonte de dados</strong>
-      <div style="color:#92400e">Este relatório lê automaticamente o arquivo CSV fixo no servidor:</div>
-      <code id="csvPathCode">./posicao_semanal.csv</code>
-      <div style="color:#92400e">Clique em <b>Recarregar</b> para atualizar após trocar o CSV no servidor.</div>
-    </div>
+      <strong>Fonte de dados (CSV fixo)</strong>
+      <code id="csvPathLabel">./dados.csv</code>
+      <div style="color:#92400e">Formato: <b>Mes,CNPJ,Semana,A_Receber,A_Pagar</b> • Ex.: <b>2026-01,WOOD,1,10000,3000</b></div>
     </div>
 
     <div class="controls no-print">
@@ -311,18 +301,19 @@
 
     <div class="report-card">
       <div class="report-header">
-        <!-- LOGO: troque o arquivo local se quiser -->
         <img src="./logo.jpg" alt="Logo ARBOREAL" class="logo">
         <h1>FINANCEIRO</h1>
         <h2>Posição Semanal • A Receber x A Pagar</h2>
         <p id="reportDate">Mês <span id="monthLabel">—</span> • <span id="todayLabel">—</span></p>
-        <p id="cnpjLine" style="margin-top:.35rem; font-size:1.05rem; color:#374151;">Unidade: <span id="cnpjLabel" style="font-weight:800; color:#111827;">—</span></p>
+        <p id="cnpjLine" style="margin-top:.35rem; font-size:1.05rem; color:#374151;">
+          Unidade: <span id="cnpjLabel" style="font-weight:800; color:#111827;">—</span>
+        </p>
 
         <div class="tabs no-print" id="tabs" style="display:none"></div>
       </div>
 
       <div id="loadingState" style="text-align:center; padding:4rem; color:#6b7280;">
-        <p style="font-size:1.5rem;">⏳ Carregando dados do servidor...</p>
+        <p style="font-size:1.5rem;">⏳ Carregando dados...</p>
       </div>
 
       <div id="reportContent" style="display:none;">
@@ -348,7 +339,7 @@
         </table>
 
         <div class="stats-grid">
-          <div class="stat-card green">
+          <div class="stat-card blue">
             <p>Total a receber</p>
             <p id="kpiReceber">R$ 0,00</p>
           </div>
@@ -371,6 +362,12 @@
 
 <script>
   // ===============================
+  // CONFIG: Caminho fixo do CSV
+  // ===============================
+  const CSV_FILE_PATH = './dados.csv'; // <-- altere aqui se precisar
+  document.getElementById('csvPathLabel').textContent = CSV_FILE_PATH;
+
+  // ===============================
   // Estado
   // ===============================
   let chartInstance = null;
@@ -378,13 +375,6 @@
   let activeBucket = 'WOOD';
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
-
-  // ==========================================
-  // CONFIGURAÇÃO: CSV fixo no servidor
-  // ==========================================
-  const CSV_FILE_PATH = './posicao_semanal.csv';
-  const csvPathCodeEl = document.getElementById('csvPathCode');
-  if (csvPathCodeEl) csvPathCodeEl.textContent = CSV_FILE_PATH;
 
   // Data no cabeçalho
   (function initDates(){
@@ -405,27 +395,8 @@
     if(rawRows.length) renderAll();
   });
 
-  document.getElementById('btnReload').addEventListener('click', () => {
-    loadData();
-  });
-
-  const text = await f.text();
-      rawRows = parseCSV(text);
-      if(!rawRows.length) throw new Error('Nenhum dado válido encontrado no CSV.');
-
-      // define CNPJ inicial: WOOD > ARBO > CAMP > primeiro encontrado
-      const buckets = getBuckets(rawRows);
-      const preferred = ['WOOD','ARBO','CAMP'];
-      activeBucket = preferred.find(b => buckets.includes(b)) || buckets[0] || 'UNKNOWN';
-
-      renderTabs(buckets);
-      renderAll();
-
-      showMessage(`✅ CSV carregado: ${rawRows.length} linhas.`, 'success');
-    }catch(err){
-      console.error(err);
-      showMessage(`⚠️ ${err.message || 'Erro ao carregar CSV.'}`, 'error');
-    }
+  document.getElementById('btnReload').addEventListener('click', async () => {
+    await loadData(true);
   });
 
   // ===============================
@@ -444,42 +415,46 @@
     }
   }
 
-  
   // ===============================
-  // Carregar CSV fixo do servidor
+  // Carregar CSV fixo
   // ===============================
-  async function loadData() {
+  async function loadData(isManual = false){
     try{
-      showMessage('⏳ Carregando dados do servidor...', 'loading');
+      if(isManual) showMessage('⏳ Recarregando dados...', 'loading');
 
-      const res = await fetch(CSV_FILE_PATH, { cache: 'no-store' });
-      if(!res.ok){
-        throw new Error(`Arquivo CSV não encontrado (${res.status})`);
-      }
+      // cache-buster pra evitar cache quando necessário
+      const url = CSV_FILE_PATH + (CSV_FILE_PATH.includes('?') ? '&' : '?') + 'v=' + Date.now();
+
+      const res = await fetch(url, { cache: 'no-store' });
+      if(!res.ok) throw new Error(`Não foi possível acessar o CSV (${res.status}).`);
+
       const text = await res.text();
       rawRows = parseCSV(text);
+      if(!rawRows.length) throw new Error('Nenhum dado válido encontrado no CSV.');
 
-      if(!rawRows.length){
-        throw new Error('Nenhum dado válido encontrado no CSV.');
-      }
-
+      // define CNPJ inicial: WOOD > ARBO > CAMP > primeiro encontrado
       const buckets = getBuckets(rawRows);
       const preferred = ['WOOD','ARBO','CAMP'];
       activeBucket = preferred.find(b => buckets.includes(b)) || buckets[0] || 'UNKNOWN';
 
       renderTabs(buckets);
       renderAll();
-      showMessage('✅ Dados atualizados.', 'success');
+
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('reportContent').style.display = 'block';
+
+      showMessage(`✅ Dados carregados: ${rawRows.length} linhas.`, 'success');
     }catch(err){
       console.error(err);
-      rawRows = [];
+      document.getElementById('loadingState').innerHTML =
+        `<p style="font-size:1.2rem;">⚠️ Erro ao carregar dados.</p>
+         <p style="margin-top:.75rem; color:#6b7280;">${err.message || 'Verifique o caminho do CSV e as permissões.'}</p>`;
       document.getElementById('reportContent').style.display = 'none';
-      document.getElementById('loadingState').style.display = 'block';
       showMessage(`⚠️ ${err.message || 'Erro ao carregar CSV.'}`, 'error');
     }
   }
 
-// ===============================
+  // ===============================
   // CSV parsing (vírgula ou ;)
   // ===============================
   function parseCSV(csvText){
@@ -613,6 +588,7 @@
     const cnpjEl = document.getElementById('cnpjLabel');
     if (cnpjEl) cnpjEl.textContent = titleCnpj;
     document.title = `ARBOREAL - FINANCEIRO | ${titleCnpj} | ${mesSel || 'Posição Semanal'}`;
+
     if(!rawRows.length) return;
 
     document.getElementById('loadingState').style.display = 'none';
@@ -646,7 +622,7 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="position">${w.week}</td>
-        <td class="value receive-green">${fmtBRL.format(w.receber)}</td>
+        <td class="value">${fmtBRL.format(w.receber)}</td>
         <td class="value pay-red">${fmtBRL.format(w.pagar)}</td>
         <td class="value">${fmtBRL.format(saldo)}</td>
         <td class="value">${fmtBRL.format(acumulado)}</td>
@@ -714,10 +690,8 @@
     });
   }
 
-  // Carregar automaticamente ao abrir a página
-  window.addEventListener('load', () => {
-    loadData();
-  });
+  // Carrega automaticamente ao abrir
+  window.addEventListener('load', () => loadData(false));
 </script>
 </body>
 </html>
