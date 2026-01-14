@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARBOREAL - FINANCEIRO | Posição Semanal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+  // Carregar automaticamente ao abrir a página
+  window.addEventListener('load', () => {
+    loadData();
+  });
+</script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color:#f9fafb;
+      line-height:1.5;
+      color:#111827;
+    }
+    .no-print{display:block;}
+
+    header{
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color:white;
+      padding:2rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,.1);
+    }
+    header h1{ font-size:2rem; margin-bottom:.5rem; }
+    header p{ color:#d1fae5; }
+
+    .container{ max-width:1200px; margin:2rem auto; padding:0 1rem; }
+
+    .controls{
+      background:white;
+      padding:1.5rem;
+      border-radius:12px;
+      box-shadow:0 1px 3px rgba(0,0,0,.1);
+      margin-bottom:2rem;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:1rem;
+    }
+
+    .control-left{ display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
+
+    .control-group{
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+    }
+    .control-group label{
+      font-weight:500;
+      color:#374151;
+      white-space:nowrap;
+    }
+    .control-group input[type="month"],
+    .control-group input[type="file"],
+    .control-group select{
+      padding:.5rem;
+      border:1px solid #d1d5db;
+      border-radius:8px;
+      font-size:1rem;
+      background:white;
+      color:#111827;
+    }
+    .control-group input[type="file"]{ padding:.35rem; }
+
+    .btn{
+      color:white;
+      padding:.75rem 1.5rem;
+      border:none;
+      border-radius:8px;
+      font-size:1rem;
+      cursor:pointer;
+      transition: background-color .3s;
+      display:inline-flex;
+      align-items:center;
+      gap:.5rem;
+      white-space:nowrap;
+    }
+    .btn-primary{ background-color:#059669; }
+    .btn-primary:hover{ background-color:#047857; }
+    .btn-blue{ background-color:#3b82f6; }
+    .btn-blue:hover{ background-color:#2563eb; }
+
+    .report-card{
+      background:white;
+      padding:3rem;
+      border-radius:12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,.1);
+    }
+
+    .report-header{
+      text-align:center;
+      border-bottom:3px solid #059669;
+      padding-bottom:2rem;
+      margin-bottom:2rem;
+    }
+    .report-header .logo{
+      max-width:200px;
+      height:auto;
+      margin-bottom:1rem;
+    }
+    .report-header h1{
+      font-size:3rem;
+      color:#059669;
+      margin-bottom:.25rem;
+    }
+    .report-header h2{
+      font-size:1.75rem;
+      color:#1f2937;
+      margin-bottom:.25rem;
+    }
+    .report-header p{
+      font-size:1.125rem;
+      color:#6b7280;
+    }
+
+    .tabs{
+      display:flex;
+      justify-content:center;
+      gap:.5rem;
+      flex-wrap:wrap;
+      margin-top:1rem;
+    }
+    .tab{
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      color:#374151;
+      padding:.5rem .9rem;
+      border-radius:999px;
+      font-weight:700;
+      cursor:pointer;
+      user-select:none;
+      transition:.2s;
+    }
+    .tab:hover{ background:#f3f4f6; }
+    .tab.active{
+      background:#059669;
+      border-color:#059669;
+      color:white;
+    }
+
+    .chart-container{ margin:2rem 0; min-height:420px; }
+
+    .summary-table{
+      width:100%;
+      border-collapse:collapse;
+      margin: 1.5rem 0 2rem;
+    }
+    .summary-table th, .summary-table td{
+      padding:1rem;
+      text-align:left;
+      border:1px solid #e5e7eb;
+    }
+    .summary-table th{
+      background-color:#f3f4f6;
+      font-weight:600;
+      color:#374151;
+    }
+    .summary-table tbody tr:hover{ background-color:#f9fafb; }
+    .summary-table .value{ text-align:right; }
+    .summary-table .position{
+      text-align:center;
+      font-weight:700;
+      color:#059669;
+      width:120px;
+    }
+
+    .stats-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap:1.5rem;
+      margin: 2rem 0;
+    }
+    .stat-card{
+      padding:1.5rem;
+      border-radius:12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .stat-card.blue{ background-color:#eff6ff; }
+    .stat-card.green{ background-color:#f0fdf4; }
+    .stat-card.purple{ background-color:#faf5ff; }
+    .stat-card.red{ background-color:#fef2f2; }
+
+    .stat-card p:first-child{
+      font-size:.875rem;
+      color:#6b7280;
+      margin-bottom:.5rem;
+    }
+    .stat-card p:last-child{
+      font-size:1.875rem;
+      font-weight:800;
+    }
+    .stat-card.blue p:last-child{ color:#1d4ed8; }
+    .stat-card.green p:last-child{ color:#059669; }
+    .stat-card.purple p:last-child{ color:#7c3aed; }
+    .stat-card.red p:last-child{ color:#dc2626; }
+
+    .pay-red{ color:#dc2626; font-weight:700; }
+    .receive-green{ color:#059669; font-weight:700; }
+
+    .loading-message{
+      background-color:#dbeafe;
+      border-left:4px solid #3b82f6;
+      padding:1rem;
+      margin-bottom:1rem;
+      border-radius:4px;
+      color:#1e40af;
+    }
+    .error-message{
+      background-color:#fee2e2;
+      border-left:4px solid #ef4444;
+      padding:1rem;
+      margin-bottom:1rem;
+      border-radius:4px;
+      color:#991b1b;
+    }
+    .success-message{
+      background-color:#d1fae5;
+      border-left:4px solid #10b981;
+      padding:1rem;
+      margin-bottom:1rem;
+      border-radius:4px;
+      color:#065f46;
+    }
+
+    .info-box{
+      background-color:#fef3c7;
+      border-left:4px solid #f59e0b;
+      padding:1rem;
+      margin-bottom:2rem;
+      border-radius:4px;
+    }
+    .info-box strong{ color:#92400e; display:block; margin-bottom:.5rem; }
+    .info-box code{
+      background-color:white;
+      padding:.25rem .5rem;
+      border-radius:4px;
+      font-family:'Courier New', monospace;
+      color:#1f2937;
+      display:block;
+      margin:.5rem 0;
+    }
+
+    .report-footer{
+      text-align:center;
+      margin-top:3rem;
+      padding-top:2rem;
+      border-top:1px solid #e5e7eb;
+      color:#6b7280;
+      font-size:.875rem;
+    }
+
+    @media print{
+      body{ background:white; }
+      .no-print{ display:none !important; }
+      .report-card{ box-shadow:none; padding:1rem; }
+      @page{ margin:1cm; }
+    }
+
+    @media (max-width: 768px){
+      header h1{ font-size:1.5rem; }
+      .report-header h1{ font-size:2rem; }
+      .controls{ flex-direction:column; align-items:stretch; }
+      .summary-table{ font-size:.875rem; }
+      .summary-table th, .summary-table td{ padding:.5rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="no-print">
+    <div class="container">
+      <h1>ARBOREAL - FINANCEIRO</h1>
+      <p>Posição mensal (4 semanas) • A Receber x A Pagar • por CNPJ</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="messageArea" class="no-print"></div>
+
+    <div class="info-box no-print">
+      <strong>Fonte de dados</strong>
+      <div style="color:#92400e">Este relatório lê automaticamente o arquivo CSV fixo no servidor:</div>
+      <code id="csvPathCode">./posicao_semanal.csv</code>
+      <div style="color:#92400e">Clique em <b>Recarregar</b> para atualizar após trocar o CSV no servidor.</div>
+    </div>
+    </div>
+
+    <div class="controls no-print">
+      <div class="control-left">
+        <div class="control-group">
+          <label for="monthPicker">Mês:</label>
+          <input type="month" id="monthPicker">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnReload">
+          <span>🔄</span> Recarregar
+        </button>
+        <button class="btn btn-blue" onclick="window.print()">
+          <span>🖨️</span> Exportar / Imprimir
+        </button>
+      </div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-header">
+        <!-- LOGO: troque o arquivo local se quiser -->
+        <img src="./logo.jpg" alt="Logo ARBOREAL" class="logo">
+        <h1>FINANCEIRO</h1>
+        <h2>Posição Semanal • A Receber x A Pagar</h2>
+        <p id="reportDate">Mês <span id="monthLabel">—</span> • <span id="todayLabel">—</span></p>
+        <p id="cnpjLine" style="margin-top:.35rem; font-size:1.05rem; color:#374151;">Unidade: <span id="cnpjLabel" style="font-weight:800; color:#111827;">—</span></p>
+
+        <div class="tabs no-print" id="tabs" style="display:none"></div>
+      </div>
+
+      <div id="loadingState" style="text-align:center; padding:4rem; color:#6b7280;">
+        <p style="font-size:1.5rem;">⏳ Carregando dados do servidor...</p>
+      </div>
+
+      <div id="reportContent" style="display:none;">
+        <div class="chart-container">
+          <canvas id="chart"></canvas>
+        </div>
+
+        <h3 style="font-size:1.5rem; margin-top:2rem; margin-bottom:1rem; color:#1f2937;">
+          Detalhamento por Semana
+        </h3>
+
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th class="position">Semana</th>
+              <th class="value">A receber</th>
+              <th class="value">A pagar</th>
+              <th class="value">Saldo (Receber - Pagar)</th>
+              <th class="value">Acumulado</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="stats-grid">
+          <div class="stat-card green">
+            <p>Total a receber</p>
+            <p id="kpiReceber">R$ 0,00</p>
+          </div>
+          <div class="stat-card red">
+            <p>Total a pagar</p>
+            <p id="kpiPagar">R$ 0,00</p>
+          </div>
+          <div class="stat-card purple">
+            <p>Saldo projetado</p>
+            <p id="kpiSaldo">R$ 0,00</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-footer">
+        <p>Relatório gerado automaticamente • ARBOREAL © 2026</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ===============================
+  // Estado
+  // ===============================
+  let chartInstance = null;
+  let rawRows = [];
+  let activeBucket = 'WOOD';
+
+  const fmtBRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+
+  // ==========================================
+  // CONFIGURAÇÃO: CSV fixo no servidor
+  // ==========================================
+  const CSV_FILE_PATH = './posicao_semanal.csv';
+  const csvPathCodeEl = document.getElementById('csvPathCode');
+  if (csvPathCodeEl) csvPathCodeEl.textContent = CSV_FILE_PATH;
+
+  // Data no cabeçalho
+  (function initDates(){
+    const today = new Date();
+    document.getElementById('todayLabel').textContent = today.toLocaleDateString('pt-BR', {
+      day: '2-digit', month: 'long', year: 'numeric'
+    });
+
+    const mp = document.getElementById('monthPicker');
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,'0');
+    mp.value = `${yyyy}-${mm}`;
+    document.getElementById('monthLabel').textContent = mp.value;
+  })();
+
+  document.getElementById('monthPicker').addEventListener('change', function(){
+    document.getElementById('monthLabel').textContent = this.value || '—';
+    if(rawRows.length) renderAll();
+  });
+
+  document.getElementById('btnReload').addEventListener('click', () => {
+    loadData();
+  });
+
+  const text = await f.text();
+      rawRows = parseCSV(text);
+      if(!rawRows.length) throw new Error('Nenhum dado válido encontrado no CSV.');
+
+      // define CNPJ inicial: WOOD > ARBO > CAMP > primeiro encontrado
+      const buckets = getBuckets(rawRows);
+      const preferred = ['WOOD','ARBO','CAMP'];
+      activeBucket = preferred.find(b => buckets.includes(b)) || buckets[0] || 'UNKNOWN';
+
+      renderTabs(buckets);
+      renderAll();
+
+      showMessage(`✅ CSV carregado: ${rawRows.length} linhas.`, 'success');
+    }catch(err){
+      console.error(err);
+      showMessage(`⚠️ ${err.message || 'Erro ao carregar CSV.'}`, 'error');
+    }
+  });
+
+  // ===============================
+  // UI mensagens
+  // ===============================
+  function showMessage(message, type = 'success') {
+    const messageArea = document.getElementById('messageArea');
+    let className = 'success-message';
+    if (type === 'error') className = 'error-message';
+    if (type === 'loading') className = 'loading-message';
+
+    messageArea.innerHTML = `<div class="${className}">${message}</div>`;
+
+    if (type !== 'loading') {
+      setTimeout(() => { messageArea.innerHTML = ''; }, 4500);
+    }
+  }
+
+  
+  // ===============================
+  // Carregar CSV fixo do servidor
+  // ===============================
+  async function loadData() {
+    try{
+      showMessage('⏳ Carregando dados do servidor...', 'loading');
+
+      const res = await fetch(CSV_FILE_PATH, { cache: 'no-store' });
+      if(!res.ok){
+        throw new Error(`Arquivo CSV não encontrado (${res.status})`);
+      }
+      const text = await res.text();
+      rawRows = parseCSV(text);
+
+      if(!rawRows.length){
+        throw new Error('Nenhum dado válido encontrado no CSV.');
+      }
+
+      const buckets = getBuckets(rawRows);
+      const preferred = ['WOOD','ARBO','CAMP'];
+      activeBucket = preferred.find(b => buckets.includes(b)) || buckets[0] || 'UNKNOWN';
+
+      renderTabs(buckets);
+      renderAll();
+      showMessage('✅ Dados atualizados.', 'success');
+    }catch(err){
+      console.error(err);
+      rawRows = [];
+      document.getElementById('reportContent').style.display = 'none';
+      document.getElementById('loadingState').style.display = 'block';
+      showMessage(`⚠️ ${err.message || 'Erro ao carregar CSV.'}`, 'error');
+    }
+  }
+
+// ===============================
+  // CSV parsing (vírgula ou ;)
+  // ===============================
+  function parseCSV(csvText){
+    const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if(!lines.length) return [];
+
+    const sep = csvText.includes(';') ? ';' : ',';
+    const headers = lines[0].split(sep).map(h => h.trim());
+
+    // Mapear colunas com tolerância
+    const idxMes = findHeader(headers, ['mes','mês','month','competencia','competência','periodo','período'], 0);
+    const idxCnpj = findHeader(headers, ['cnpj','unidade','empresa','filial','sigla'], 1);
+    const idxSemana = findHeader(headers, ['semana','week','wk'], 2);
+    const idxReceber = findHeader(headers, ['a_receber','receber','recebimento','entrada','receita'], 3);
+    const idxPagar = findHeader(headers, ['a_pagar','pagar','pagamento','saida','saída','despesa'], 4);
+
+    const rows = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = safeSplit(lines[i], sep);
+      if(cols.length < 3) continue;
+
+      const mes = (cols[idxMes] ?? '').trim();
+      const cnpj = (cols[idxCnpj] ?? '').trim();
+      const semana = Number(String(cols[idxSemana] ?? '').trim());
+      const receber = parseNumberBR(cols[idxReceber]);
+      const pagar = parseNumberBR(cols[idxPagar]);
+
+      if(!cnpj || !Number.isFinite(semana) || semana < 1 || semana > 4) continue;
+
+      rows.push({ mes, cnpj, semana, receber: isFinite(receber) ? receber : 0, pagar: isFinite(pagar) ? pagar : 0 });
+    }
+    return rows;
+  }
+
+  function safeSplit(line, sep){
+    // simples e suficiente para nosso formato (sem aspas complexas)
+    return line.split(sep).map(s => s.trim().replace(/^"|"$/g,''));
+  }
+
+  function findHeader(headers, candidates, fallbackIdx){
+    const norm = s => String(s||'').toLowerCase().trim();
+    const hs = headers.map((h, i)=>({h, i, n:norm(h)}));
+
+    for(const c of candidates){
+      const cn = norm(c);
+      const exact = hs.find(x => x.n === cn);
+      if(exact) return exact.i;
+    }
+    for(const c of candidates){
+      const cn = norm(c);
+      const contains = hs.find(x => x.n.includes(cn));
+      if(contains) return contains.i;
+    }
+    return Math.min(fallbackIdx, headers.length-1);
+  }
+
+  function parseNumberBR(v){
+    if(v === null || v === undefined) return NaN;
+    let s = String(v).trim();
+    if(!s) return NaN;
+    s = s.replace(/[R$\s]/g,'');
+    if(s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');
+    s = s.replace(/[^0-9.\-]/g,'');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function detectBucket(v){
+    const s = String(v||'').toUpperCase().trim();
+    if(!s) return 'UNKNOWN';
+    if(s.includes('WOOD')) return 'WOOD';
+    if(s.includes('ARBO')) return 'ARBO';
+    if(s.includes('CAMP')) return 'CAMP';
+    return s;
+  }
+
+  function getBuckets(rows){
+    const set = new Set();
+    rows.forEach(r => set.add(detectBucket(r.cnpj)));
+    return Array.from(set).filter(Boolean);
+  }
+
+  // ===============================
+  // Tabs / Render
+  // ===============================
+  function renderTabs(buckets){
+    const tabs = document.getElementById('tabs');
+    tabs.style.display = 'flex';
+    tabs.innerHTML = '';
+
+    const preferred = ['WOOD','ARBO','CAMP'];
+    const ordered = [
+      ...preferred.filter(b => buckets.includes(b)),
+      ...buckets.filter(b => !preferred.includes(b))
+    ];
+
+    if(!ordered.includes(activeBucket)) activeBucket = ordered[0] || 'UNKNOWN';
+
+    ordered.forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'tab' + (b === activeBucket ? ' active' : '');
+      el.textContent = b;
+      el.onclick = () => { activeBucket = b; renderAll(); };
+      tabs.appendChild(el);
+    });
+  }
+
+  function computeWeeks(){
+    const mesSel = document.getElementById('monthPicker').value; // YYYY-MM
+
+    const weeks = [1,2,3,4].map(w => ({ week:w, receber:0, pagar:0 }));
+    rawRows.forEach(r => {
+      const bucket = detectBucket(r.cnpj);
+      if(bucket !== activeBucket) return;
+      if(mesSel && r.mes && r.mes !== mesSel) return;
+
+      const target = weeks.find(x => x.week === r.semana);
+      if(!target) return;
+
+      target.receber += (r.receber || 0);
+      target.pagar += (r.pagar || 0);
+    });
+
+    return weeks;
+  }
+
+  function renderAll(){
+    // Atualiza títulos (útil principalmente na impressão)
+    const mesSel = document.getElementById('monthPicker').value || '';
+    const titleCnpj = activeBucket || 'CNPJ';
+    const cnpjEl = document.getElementById('cnpjLabel');
+    if (cnpjEl) cnpjEl.textContent = titleCnpj;
+    document.title = `ARBOREAL - FINANCEIRO | ${titleCnpj} | ${mesSel || 'Posição Semanal'}`;
+    if(!rawRows.length) return;
+
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('reportContent').style.display = 'block';
+
+    const weeks = computeWeeks();
+    renderChart(weeks);
+    renderTable(weeks);
+    renderKPIs(weeks);
+  }
+
+  function renderKPIs(weeks){
+    const totalReceber = weeks.reduce((s,w)=>s+w.receber,0);
+    const totalPagar = weeks.reduce((s,w)=>s+w.pagar,0);
+    const saldo = totalReceber - totalPagar;
+
+    document.getElementById('kpiReceber').textContent = fmtBRL.format(totalReceber);
+    document.getElementById('kpiPagar').textContent = fmtBRL.format(totalPagar);
+    document.getElementById('kpiSaldo').textContent = fmtBRL.format(saldo);
+  }
+
+  function renderTable(weeks){
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    let acumulado = 0;
+
+    weeks.forEach(w => {
+      const saldo = w.receber - w.pagar;
+      acumulado += saldo;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="position">${w.week}</td>
+        <td class="value receive-green">${fmtBRL.format(w.receber)}</td>
+        <td class="value pay-red">${fmtBRL.format(w.pagar)}</td>
+        <td class="value">${fmtBRL.format(saldo)}</td>
+        <td class="value">${fmtBRL.format(acumulado)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderChart(weeks){
+    const ctx = document.getElementById('chart');
+
+    if(chartInstance) chartInstance.destroy();
+
+    const labels = weeks.map(w => `Semana ${w.week}`);
+    const receber = weeks.map(w => w.receber);
+    const pagar = weeks.map(w => w.pagar);
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'A receber',
+            data: receber,
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5, 150, 105, 0.12)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: 'A pagar',
+            data: pagar,
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.10)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display:true, position:'top' },
+          tooltip: {
+            callbacks: {
+              label: (context) => `${context.dataset.label}: ${fmtBRL.format(context.parsed.y)}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR')
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Carregar automaticamente ao abrir a página
+  window.addEventListener('load', () => {
+    loadData();
+  });
+</script>
+</body>
+</html>
